@@ -47,3 +47,12 @@ Voici un tableau type sans entête en RST :
      - 50 Go
    * - Réseau
      - NAT
+
+
+Pour monter un dossier partagé sur VMWare (une fois le paramétrage de la VM fait), utiliser cette commande :
+
+.. code-block:: bash
+
+    sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other
+
+Rajouter les commandes pour lire les disques en tty anaconda, etc

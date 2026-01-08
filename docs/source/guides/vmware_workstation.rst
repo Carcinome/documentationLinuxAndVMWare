@@ -134,6 +134,7 @@ Dans la VM build, dans un terminal :
     bootloader --location=mbr
 
     # Automatic partitions
+    ignoredisk --only-use=sda
     autopart --type=lvm
 
     # Auto reboot
@@ -141,7 +142,9 @@ Dans la VM build, dans un terminal :
 
     # Packages
     %packages
-    @^server-with-gui
+    @core
+    @standard
+    @gnome-desktop
     vim
     git
     curl
@@ -184,9 +187,9 @@ Toujours dans la VM build, dans un terminal :
 
     cd ~/carcios
     sudo mkksiso \
-    --ks ks/carcios-minimal.ks \
-    iso/OracleLinux-R9-U6-x86_64-dvd.iso \
-    iso/OracleLinux-R9-U6-x86_64-dvd-carcios_v1.iso
+    --ks ~/ks/carcios-minimal.ks \
+    ~/iso/OracleLinux-R9-U6-x86_64-dvd.iso \
+    ~/iso/OracleLinux-R9-U6-x86_64-dvd-carcios_v1.iso
 
 
 3. Création de la VM test et premiers essais
