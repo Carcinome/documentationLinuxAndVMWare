@@ -188,3 +188,30 @@ Toujours dans la VM build, dans un terminal :
     iso/OracleLinux-R9-U6-x86_64-dvd.iso \
     iso/OracleLinux-R9-U6-x86_64-dvd-carcios_v1.iso
 
+
+3. Création de la VM test et premiers essais
+--------------------------------------------
+
+3.1 Création de la VM test dans VMWare Workstation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Voici les paramètres recommandés :
+
+.. list-table::
+   :widths: 30 70
+   :header-rows: 0
+
+   * - OS
+     - Linux
+   * - Version
+     - Oracle Linux 9.6
+   * - CPU
+     - 2 vCPU
+   * - RAM
+     - 4 Go
+   * - Espace disque
+     - 40 Go
+   * - CD/DVD
+     - ISO Custom carcios.iso
+   * - Réseau
+     - NAT
