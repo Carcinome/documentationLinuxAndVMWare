@@ -134,7 +134,12 @@ Dans la VM build, dans un terminal :
     bootloader --location=mbr
 
     # Automatic partitions
-    ignoredisk --only-use=sda
+    ignoredisk --only-use=nvme0n1 # Ligne importante,
+    # pour éviter que le disque ne soit pas trouvé par anaconda.
+    # pour savoir le modèle précis de disque, sur la machine on peut faire :
+    # lsblk -d -o NAME,SIZE,MODEL,TYPE
+    clearpart --all --initlabel --drives=nvme0n1 # Cette ligne permet d'autoriser anaconda
+    # à formater le disque avant d'écrire dessus.
     autopart --type=lvm
 
     # Auto reboot
@@ -153,7 +158,13 @@ Dans la VM build, dans un terminal :
 
     # Post-install minimal
     %post --log=/root/ks-post.log
+    # Mode graphique activé par defaut
+    systemctl set-default graphical.target
+    # S'assurer que GDM est bien actif
+    systemctl enable gdm
+    # Validation message
     echo "Welcome on CarciOS - minimal build validated" > /etc/motd
+
     %end
 
 Avant d'aller plus loin, on valide le Kickstart pour être sûr qu'il n'y a pas d'erreur :
@@ -218,3 +229,5 @@ Voici les paramètres recommandés :
      - ISO Custom carcios.iso
    * - Réseau
      - NAT
+
+On procède ensuite à l'installation sur la VM de test de l'OS custom.

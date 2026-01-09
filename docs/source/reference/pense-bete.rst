@@ -1,6 +1,10 @@
 Pense-bête
 ==========
 
+Ici un condensé en vrac de tips et astuces.
+
+1. Création de documentation RST
+--------------------------------
 
 Pour créer de la documentation en RST (recommandé), déployer via sphinx le package complet dans un environnement Python.
 
@@ -28,6 +32,8 @@ Une fois ceci fait, on installe et configure le package Sphinx :
     # On vérifie avec :
     sphinx-build --version
 
+2. Tableau sans entête RST
+--------------------------
 
 Voici un tableau type sans entête en RST :
 
@@ -49,10 +55,32 @@ Voici un tableau type sans entête en RST :
      - NAT
 
 
+3. Monter un dossier partagé sur VMWare
+---------------------------------------
+
 Pour monter un dossier partagé sur VMWare (une fois le paramétrage de la VM fait), utiliser cette commande :
 
 .. code-block:: bash
 
     sudo mount -t fuse.vmhgfs-fuse .host:/ /mnt/hgfs -o allow_other
 
-Rajouter les commandes pour lire les disques en tty anaconda, etc
+4. Connaître le type de disque sur une machine Linux
+----------------------------------------------------
+
+Pour connaître le type de disque, se connecter en tty sur un terminal et entrer la commande suivante :
+
+.. code-block:: bash
+
+    lsblk -d -o NAME,SIZE,MODEL,TYPE
+    # si lsblk n'est pas dispo :
+    cat /proc/partitions
+
+5. Contrôler le bon déroulé de l'installation de l'OS
+-----------------------------------------------------
+
+Pour contrôler le bon déroulé de l'installation de l'OS personnalisé, on utilise cette commande :
+
+.. code-block:: bash
+
+    cat /etc/motd
+
