@@ -231,3 +231,9 @@ Voici les paramètres recommandés :
      - NAT
 
 On procède ensuite à l'installation sur la VM de test de l'OS custom.
+
+
+4. Exemple type de Kickstart
+----------------------------
+
+Exemple type à noter ici une fois le kickstart validé
