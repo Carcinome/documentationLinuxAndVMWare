@@ -167,6 +167,10 @@ Dans la VM build, dans un terminal :
 
     %end
 
+Noter que dans le Kickstart, il faut bien séparer le `%package` du `%post`.\
+En effet, `%package` gère les paquets ISO only, le reste (comme par exemples les applications tièrces)
+est déployé via `%post`.
+
 Avant d'aller plus loin, on valide le Kickstart pour être sûr qu'il n'y a pas d'erreur :
 
 .. code-block:: bash
