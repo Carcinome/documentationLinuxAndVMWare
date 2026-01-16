@@ -12,7 +12,7 @@ Penser à se mettre en environnement virtuel Python :
 
 .. code-block:: powershell
 
-    .\env_work\Scripts\activate.ps1
+    .\env_work\Scripts\activate.ps1 # Commande windows
 
 Une fois ceci fait, on installe et configure le package Sphinx :
 
