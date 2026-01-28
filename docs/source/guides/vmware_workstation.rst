@@ -81,7 +81,25 @@ Dans le HOME, créer les dossiers suivants :
 
 .. code-block:: bash
 
-    mkdir -p ~/carcios/{iso, ks, post, branding, repo, docs, tests}
+    mkdir -p ~/carcios/{iso, ks, post, branding, repo, docs, tests, carcios}
+
+Il est treès important de créer un dossier `carcios` (nom de votre os) dans le dossier `carcios`,
+parce que le kickstart va venir chercher dans ce dossier des informations natives à l'OS (la sécurité, le SSH, etc).
+
+L'arborescence ressemble donc à cela :
+
+.. code-block:: bash
+
+        ~/carcios/
+        ├── iso/
+        │   ├── OracleLinux-R9-U6-x86_64-dvd.iso
+        │   └── OracleLinux-R9-U6-x86_64-dvd-carcios_v1.iso
+        ├── ks/
+        │   └── carcios-minimal.ks
+        ├── carcios/
+        │   └── security/
+        │       └── ssh/
+        │           └── 10-carcios-baseline.conf
 
 
 2.4 Création du Kickstart minimal
@@ -91,36 +109,29 @@ Dans la VM build, dans un terminal :
 
 .. code-block:: bash
 
-    cd ~/carcios/ks
-    touch carcios-minimal.ks
-
-    vim carcios-minimal.ks
-
-    # Dans le fichier .ks, écrire ceci :
-
-    # ==================================
+    # ==============================
     # CarciOS - Kickstart minimal
     # Base Oracle Linux 9.6
-    # ==================================
+    # ==============================
 
-    # Text mod (more stable for tests)
+    # Mode texte (plus stable pour les tests)
     text
 
-    # Langage / keyboard
-    lang en_EN.UTF-8
+    # Langue / clavier
+    lang en_EN.utf-8
     keyboard fr
 
     # Timezone
     timezone Europe/Paris --utc
 
-    # Network (DHCP auto)
+    # Network (DHCP auto for now)
     network --bootproto=dhcp --device=link --activate
     network --hostname=carcios-test
 
     # Installation sources
     cdrom
 
-    # License agreed
+    # Acceptation license
     eula --agreed
 
     # Security (simple for now)
@@ -128,44 +139,109 @@ Dans la VM build, dans un terminal :
     firewall --enabled --service=ssh
 
     # Accounts
-    user --name=adminuser --groups=wheel --password=changeme --plaintext
+    user --name=naval --groups=wheel --password=navalpwd --plaintext
+    rootpw --lock
 
-    # Bootloader
+    #Bootloader
     bootloader --location=mbr
 
-    # Automatic partitions
-    ignoredisk --only-use=nvme0n1 # Ligne importante,
-    # pour éviter que le disque ne soit pas trouvé par anaconda.
-    # pour savoir le modèle précis de disque, sur la machine on peut faire :
-    # lsblk -d -o NAME,SIZE,MODEL,TYPE
-    clearpart --all --initlabel --drives=nvme0n1 # Cette ligne permet d'autoriser anaconda
-    # à formater le disque avant d'écrire dessus.
+    # Automatic partitionment (LVM)
+    ignoredisk --only-use=nvme0n1
+    clearpart --all --initlabel --drives=nvme0n1
     autopart --type=lvm
 
-    # Auto reboot
+    # Reboot
     reboot
 
     # Packages
     %packages
+    # --- System base ---
     @core
     @standard
     @gnome-desktop
+
+    # --- Admin tools and debug ---
     vim
     git
     curl
     wget
+    tree
+    rsync
+    jq
+    gettext
+    xterm
+
+    # --- Network ---
+    net-tools
+    bind-utils
+    wireshark
+
+    # --- Security ---
+    policycoreutils-python-utils
+
+    # --- Java ---
+    java-1.8.0-openjdk
+
     %end
 
     # Post-install minimal
     %post --log=/root/ks-post.log
-    # Mode graphique activé par defaut
+
+    # --- Sudo, root and wheel group ---
+    dnf -y install sudo
+
+    echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/00-wheel
+    chmod 440 /etc/sudoers.d/00-wheel
+
+    passwd -l root || true
+
+    echo "[POST] GUI activation"
     systemctl set-default graphical.target
-    # S'assurer que GDM est bien actif
     systemctl enable gdm
-    # Validation message
-    echo "Welcome on CarciOS - minimal build validated" > /etc/motd
+
+    echo "[POST] EPEL repository activation"
+    dnf -y install oracle-epel-release-el9
+
+    echo "[POST] DNF cache update"
+    dnf makecache
+
+    echo "[POST] No-ISO packages installation"
+    dnf -y install htop inotify-tools
+
+    echo "[POST] Post-install ended"
+    echo "Welcome to CarciOS - minimal valid build" > /etc/motd
+
+    # --- GNOME branding ---
+    echo "[POST] Branding GNOME"
 
     %end
+
+    # ---------------------------------------------------
+    # Copy assets from ISO to installed system (NOCHROOT)
+    # ---------------------------------------------------
+    %post --nochroot --log=/mnt/sysroot/root/ks-post-nochroot.log
+
+    # DEBUG: Check if the file exist in installer
+    ls -l /run/install/repo/carcios/security/ssh || true
+
+    # Create directory in installed system
+    install -d -m 755 /mnt/sysroot/etc/ssh/sshd_config.d
+
+    # Copy file in installed system
+    install -m 644 \
+      /run/install/repo/carcios/security/ssh/10-carcios-baseline.conf \
+      /mnt/sysroot/etc/ssh/sshd_config.d/10-carcios-baseline.conf
+
+    %end
+
+
+    # ------------------------------
+    # Validate ssh config (chroot)
+    # ------------------------------
+    %post --log=/root/ks-post-sshd.log
+    sshd -t
+    %end
+
 
 Noter que dans le Kickstart, il faut bien séparer le `%package` du `%post`.\
 En effet, `%package` gère les paquets ISO only, le reste (comme par exemples les applications tièrces)
@@ -180,7 +256,39 @@ Avant d'aller plus loin, on valide le Kickstart pour être sûr qu'il n'y a pas 
    # Résultat attendu : aucune sortie
 
 
-2.5 Téléchargement de l'ISO officielle et mise à disposition
+2.5 Création d'un fichier conf baseline "basique"
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Le fichier baseline.conf permet de centraliser les règles de sécurité de manière à les déployer via le kickstart (dans
+le %post) sans surcharger ce dernier. En effet, il est recommandé d'appeler des fichiers depuis le kickstart et non de
+tout écrire à l'intérieur pour des raisons de relecture et de maintenabilité.
+
+Voici un exemple d'un fichier baseline.conf de base :
+
+.. code-block:: bash
+
+    # CarciOS SSH baseline
+
+    # --- Access control ---
+    PermitRootLogin no
+    MaxAuthTries 3
+    LoginGraceTime 30
+
+    # --- Authentication ---
+    PasswordAuthentication yes
+    PubkeyAuthentication yes
+
+    # --- Hardening basics ---
+    X11Forwarding no
+    AllowTcpForwarding no
+    ClientAliveInterval 300
+    ClientAliveCountMax 2
+
+    # --- Logging ---
+    LogLevel VERBOSE
+
+
+2.6 Téléchargement de l'ISO officielle et mise à disposition
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Placer l'ISO officielle dans :
@@ -193,7 +301,7 @@ Placer l'ISO officielle dans :
     ls -lh ~/carcios/iso
 
 
-2.6 Création de l'ISO custom
+2.7 Création de l'ISO custom
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Toujours dans la VM build, dans un terminal :
@@ -205,6 +313,36 @@ Toujours dans la VM build, dans un terminal :
     --ks ~/ks/carcios-minimal.ks \
     ~/iso/OracleLinux-R9-U6-x86_64-dvd.iso \
     ~/iso/OracleLinux-R9-U6-x86_64-dvd-carcios_v1.iso
+
+
+2.8 Mise en place des paramètres du Kernel Linux (sysctl)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Les paramètres du noyau Linux vont être modifiés directement depuis un fichier `sysctl`. Les modifications concerneront :
+
+- La sécurité réseau
+- La gestion mémoire
+- La protection des processus
+- La résistance aux attaques
+- La performance
+
+On se base sur la même logique que pour les paramètres SSH, à savoir que le fichier va servir de policy et que le système
+va l'appliquer automatiquement à l'installation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 3. Création de la VM test et premiers essais
@@ -235,9 +373,3 @@ Voici les paramètres recommandés :
      - NAT
 
 On procède ensuite à l'installation sur la VM de test de l'OS custom.
-
-
-4. Exemple type de Kickstart
-----------------------------
-
-Exemple type à noter ici une fois le kickstart validé
